@@ -8,3 +8,4 @@ php/var/sessions/
 php/.env.local
 php/.env.local.php
 php/.env.*.local
+php/vendor/
