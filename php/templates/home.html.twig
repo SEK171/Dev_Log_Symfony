@@ -1,0 +1,272 @@
+{% extends 'base.html.twig' %}
+
+<!-- added this here to load only once, get an infinite loop in the logs table otherwise -->
+{% set isAdmin = is_granted('ROLE_ADMIN') %}
+
+{% block title %}Home - Log Manager{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('assets/DataTables/datatables.css') }}">
+{% endblock %}
+
+{% block body %}
+<div class="container">
+    <div class="filters-container">
+        {{ form_start(filtersForm, {'attr': {'id': 'filtersForm'}}) }}
+            <div class="row">
+                <div class="channel-div filter-group">
+                    {{ form_row(filtersForm.channel) }}
+                </div>
+                
+                <div class="type-div filter-group">
+                    {{ form_row(filtersForm.type) }}
+                </div>
+
+                <div class="date-div">
+                    <div class="filter-group">
+                        {{ form_row(filtersForm.startDate) }}
+                    </div>
+
+                    <div class="filter-group">
+                        {{ form_row(filtersForm.endDate) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-buttons">
+                <button type="button" id="resetFilters">Reset Filters</button>
+                {{ form_row(filtersForm.submit) }}
+            </div>
+        {{ form_end(filtersForm) }}
+    </div>
+
+    <div class="card-body">
+        <table id="data" class="display overflow_table">
+            <thead>
+                <tr>
+                    <th>DateTime</th>
+                    <th>Channel</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    {% if isAdmin %}
+                        <th>Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                    {% set typeClass = 'type-' ~ log.type|lower %}
+                    <tr class="{{ typeClass }}">
+                        <td>{{ log.datetime|date('Y-m-d H:i:s') }}</td>
+                        <td>{{ log.channel }}</td>
+                        <td>{{ log.type }}</td>
+                        <td>{{ log.description }}</td>
+                        {% if isAdmin %}
+                            <td>
+                                {% if log.type|lower not in ['info', 'debug', 'completed'] %}
+                                    <button class="assign-btn" data-logid="{{ log.id }}">Assign</button>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if isAdmin %}
+    <div class="content" style="text-align: center;">
+        <button id="createLogBtn" class="btn btn-primary">+ Create Log</button>
+    </div>
+    {% endif %}
+
+</div>
+
+{% if isAdmin %}
+<div id="assignModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Assign Task</h3>
+        {{ form_start(assignTaskForm, {'attr': {'id': 'assignForm'}}) }}
+            {{ form_row(assignTaskForm.log_id) }}
+            {{ form_row(assignTaskForm.assigned_to) }}
+            {{ form_row(assignTaskForm.description) }}
+            {{ form_row(assignTaskForm.submit) }}
+        {{ form_end(assignTaskForm) }}
+    </div>
+</div>
+{% endif %}
+
+{% if isAdmin %}
+<div id="createLogModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Create New Log</h3>
+        {{ form_start(createForm, {'attr': {'id': 'createLogForm', 'method': 'post'}}) }}
+            {{ form_row(createForm.datetime) }}
+            {{ form_row(createForm.channel) }}
+            {{ form_row(createForm.type) }}
+            {{ form_row(createForm.description) }}
+            <button type="submit" class="btn btn-primary">Create Log</button>
+        {{ form_end(createForm) }}
+        
+        {# Datalist for channel autocomplete #}
+        <datalist id="channel-list">
+            {% for channel in channels %}
+                <option value="{{ channel }}">
+            {% endfor %}
+        </datalist>
+        
+        {# Datalist for type autocomplete #}
+        <datalist id="type-list">
+            {% for type in types %}
+                <option value="{{ type }}">
+            {% endfor %}
+            {# Add common log types as well #}
+            {% for type in types %}
+                <option value="{{ type }}">
+            {% endfor %}
+        </datalist>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ asset('assets/DataTables/datatables.js') }}"></script>
+<script>
+    const current_date = new Date();
+    current_date.setHours(0, 0, 0, 0);
+    
+    function check(start, end){
+        const startD = typeof start === 'string' ? new Date(start) : start;
+        const endD = typeof end === 'string' ? new Date(end) : end;
+
+        if (endD >= startD && startD <= current_date) {
+            return true;
+        } else {    
+            alert("Error in date input");
+            return false;
+        }
+    }
+
+    $(document).ready(function () {
+        let columnDefs = [
+            {targets: 0, width: '15%'},
+            {targets: 1, width: '10%'},
+            {targets: 2, width: '10%'},
+            {targets: 3, width: '55%'}
+        ];
+
+        {% if isAdmin %}
+            columnDefs.push({targets: 4, width: '10%', orderable: false, searchable: false});
+        {% endif %}
+
+        const table = $('#data').DataTable({
+            columnDefs: columnDefs
+        });
+
+        $('#data').on('click', '.assign-btn', function() {
+            const logId = $(this).data('logid');
+            $('#assignForm input[name="log_id"]').val(logId);
+            $('#assignModal').css('display', 'flex');
+        });
+
+        $('.close').click(function() {
+            $('.modal').css('display', 'none');
+        });
+
+        $('#assignForm').submit(function(e) {
+            e.preventDefault();
+            
+            $.ajax({
+                url: '{{ path("task_assign") }}',
+                method: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    $('#assignModal').hide();
+                    if (response.success) {
+                        alert('Task assigned successfully!');
+                        location.reload();
+                    } else {
+                        if (response.errors) {
+                            let errorMsg = 'Form errors:\n';
+                            for (let field in response.errors) {
+                                errorMsg += field + ': ' + response.errors[field] + '\n';
+                            }
+                            alert(errorMsg);
+                        } else {
+                            alert('Error assigning task: ' + (response.error || 'Unknown error'));
+                        }
+                    }
+                },
+                error: function() {
+                    alert('Error assigning task. Please try again.');
+                }
+            });
+        });
+
+        // Handle filter form submission with date validation
+        $('#filtersForm').on('submit', function(e){
+            const startDateField = $('#filtersForm input[name="startDate"]');
+            const endDateField = $('#filtersForm input[name="endDate"]');
+            
+            if (startDateField.length && endDateField.length) {
+                const startDate = startDateField.val();
+                const endDate = endDateField.val();
+                
+                if (startDate && endDate && !check(startDate, endDate)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+
+        $('#resetFilters').on('click', function() {
+            window.location.search = '';
+        });
+
+        $('#createLogBtn').click(function() {
+            $('#createLogModal').css('display', 'flex');
+        });
+
+        $('#createLogForm').submit(function(e) {
+            e.preventDefault();
+            
+            $.ajax({
+                url: '{{ path('api_logs_create') }}',
+                method: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    $('#createLogModal').hide();
+                    if (response.success) {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        if (response.errors) {
+                            let errorMsg = 'Form errors:\n';
+                            for (let field in response.errors) {
+                                errorMsg += field + ': ' + response.errors[field] + '\n';
+                            }
+                            alert(errorMsg);
+                        } else {
+                            alert('Error creating log');
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Error creating log';
+                    if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        errorMsg += ':\n';
+                        for (let field in xhr.responseJSON.errors) {
+                            errorMsg += field + ': ' + xhr.responseJSON.errors[field] + '\n';
+                        }
+                    }
+                    alert(errorMsg);
+                }
+            });
+        });
+    });
+
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Tasks - Log Manager{% endblock %}
+
+{% block body %}
+<div class="content">
+    <div class="page-title">
+        <div class="wrap">
+            <h2>Your Tasks</h2>
+        </div>
+    </div>
+
+    <div class="block">
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% endfor %}
+        
+        {% for message in app.flashes('error') %}
+            <div class="alert alert-error">{{ message }}</div>
+        {% endfor %}
+
+        <table class="task-table overflow_table">
+            <thead>
+                <tr>
+                    <th>Task Description</th>
+                    <th>Log Entry</th>
+                    <th>Assigned By</th>
+                    {% if is_granted('ROLE_ADMIN') %}
+                        <th>Assigned To</th>
+                    {% endif %}
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if tasks is empty %}
+                    <tr>
+                        <td colspan="{% if is_granted('ROLE_ADMIN') %}7{% else %}6{% endif %}" class="text-center">
+                            No tasks found.
+                        </td>
+                    </tr>
+                {% else %}
+                    {% for task in tasks %}
+                        <tr>
+                            <td>{{ task.description }}</td>
+                            <td title="{{ task.log.description }}">
+                                {{ task.log.description|length > 50 ? task.log.description|slice(0, 50) ~ '...' : task.log.description }}
+                            </td>
+                            <td>{{ task.assignedBy.username }}</td>
+                            {% if is_granted('ROLE_ADMIN') %}
+                                <td>{{ task.assignedTo.username }}</td>
+                            {% endif %}
+                            <td class="status-{{ task.status }}">
+                                {{ task.status|capitalize }}
+                            </td>
+                            <td>{{ task.createdAt|date('Y-m-d H:i') }}</td>
+                            <td>
+                                {% if task.status == 'pending' %}
+                                    <form method="POST" action="{{ path('task_update') }}" class="inline-form">
+                                        <input type="hidden" name="task_id" value="{{ task.id }}">
+                                        <input type="hidden" name="status" value="completed">
+                                        <button type="submit" class="btn small success">Complete</button>
+                                    </form>
+                                    <form method="POST" action="{{ path('task_update') }}" class="inline-form">
+                                        <input type="hidden" name="task_id" value="{{ task.id }}">
+                                        <input type="hidden" name="status" value="deleted">
+                                        <button type="submit" class="btn small danger">Delete</button>
+                                    </form>
+                                {% else %}
+                                    <em>No actions</em>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+.vs
+
+
+# Symfony
+php/var/cache/
+php/var/log/
+php/var/sessions/
+php/.env.local
+php/.env.local.php
+php/.env.*.local
+php/vendor/

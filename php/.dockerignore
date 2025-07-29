@@ -1,0 +1,11 @@
+Dockerfile
+.dockerignore
+
+
+# Symfony specific
+var/cache/*
+var/log/*
+var/sessions/*
+.env.local
+.env.local.php
+.env.*.local

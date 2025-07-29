@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{% block title %}Log Manager{% endblock %}</title>
+    <link rel="stylesheet" href="{{ asset('assets/style.css') }}">
+    <script src="{{ asset('assets/jQuery/jquery-3.7.1.js') }}"></script>
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
+    <header class="header">
+        <div class="wrapper">
+            <h1>Log Manager</h1>
+            
+            <nav class="menu">
+                <a href="{{ path('logs_index') }}">Home</a>
+                <a href="{{ path('tasks_index') }}">Tasks</a>
+                <a href="{{ path('notifications_index') }}">Notifications</a>
+                
+                {% if is_granted('ROLE_ADMIN') %}
+                    <a href="{{ path('admin_index') }}">Admin</a>
+                {% endif %}
+                
+                {% if app.user %}
+                    <div class="user-info">
+                        <p>Logged in as {{ app.user.username }}</p>
+                        <a href="{{ path('app_logout') }}">Logout</a>
+                    </div>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        {% block body %}{% endblock %}
+    </main>
+
+    <footer>
+        <p align="right">&copy; {{ "now"|date("Y") }} Log Manager</p>
+    </footer>
+
+    {% block javascripts %}{% endblock %}
+</body>
+</html>

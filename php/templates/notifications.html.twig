@@ -1,0 +1,119 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Notifications - Log Manager{% endblock %}
+
+{% block body %}
+<div class="content">
+    <div class="page-title">
+        <div class="wrap">
+            <h2>Notifications</h2>
+            <div class="notification-actions">
+                <button id="markAllRead" class="btn small">Mark All Read</button>
+                <button id="refreshNotifications" class="btn small">Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="block">
+        <div id="notificationsContainer">
+            {% if notifications is empty %}
+                <div class="no-notifications">
+                    <p>No notifications to display.</p>
+                </div>
+            {% else %}
+                <div class="notifications-list">
+                    {% for notification in notifications %}
+                        <div class="notification-item {{ notification.isRead ? 'read' : 'unread' }}" 
+                             data-id="{{ notification.id }}">
+                            <div class="notification-content">
+                                <div class="notification-message">
+                                    {{ notification.message }}
+                                </div>
+                                <div class="notification-time">
+                                    {{ notification.createdAt|date('Y-m-d H:i:s') }}
+                                </div>
+                            </div>
+                            {% if not notification.isRead %}
+                                <div class="notification-actions">
+                                    <button class="mark-read-btn btn small" data-id="{{ notification.id }}">
+                                        Mark Read
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+    $(document).ready(function() {
+        // mark single notification as read
+        $(document).on('click', '.mark-read-btn', function() {
+            const notificationId = $(this).data('id');
+        
+            $.post('{{ path("notifications_mark_read") }}', {
+                id: notificationId,
+                _token: '{{ csrf_token("mark_read") }}'
+            }, function(response) {
+                if (response.success) {
+                    // update the UI
+                    const $notification = $(`.notification-item[data-id="${notificationId}"]`);
+                    $notification.removeClass('unread').addClass('read');
+                    $notification.find('.notification-actions').remove();
+                
+                    // update notification count if it exists
+                    updateNotificationCount();
+                }
+            }, 'json');
+        });
+
+        // mark all notifications as read
+        $('#markAllRead').click(function() {
+            const unreadNotifications = $('.notification-item.unread');
+        
+            if (unreadNotifications.length === 0) {
+                alert('No unread notifications to mark.');
+                return;
+            }
+
+            // mark each unread notification
+            unreadNotifications.each(function() {
+                const notificationId = $(this).data('id');
+                $.post('{{ path("notifications_mark_read") }}', { 
+                    id: notificationId,
+                    _token: '{{ csrf_token("mark_read") }}'
+                }, function() {}, 'json');
+            });
+
+            // update UI immediately
+            unreadNotifications.removeClass('unread').addClass('read');
+            $('.notification-actions').remove();
+            updateNotificationCount();
+        });
+
+        // Refresh notifications
+        $('#refreshNotifications').click(function() {
+            location.reload();
+        });
+
+        // function to update notification count in header (if it exists)
+        function updateNotificationCount() {
+            const unreadCount = $('.notification-item.unread').length;
+            const $counter = $('.notification-counter');
+        
+            if ($counter.length) {
+                if (unreadCount > 0) {
+                    $counter.text(unreadCount).show();
+                } else {
+                    $counter.hide();
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

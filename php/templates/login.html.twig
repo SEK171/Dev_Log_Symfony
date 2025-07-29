@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Login</title>
+    <link href="{{ asset('assets/login_style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="login">
+        <h1>Login Page</h1>
+
+        {% if error %}
+            <p style="color: red;">{{ error.messageKey|trans(error.messageData, 'security') }}</p>
+        {% endif %}
+
+        <form action="{{ path('app_login') }}" method="post" class="form login-form">
+            <label class="form-label" for="username">Username</label>
+            <div class="form-group">
+                <input class="form-input" type="text" name="_username" value="{{ last_username }}" placeholder="Username" id="username" required>
+            </div>
+
+            <label class="form-label" for="password">Password</label>
+            <div class="form-group mar-bot-5">
+                <input class="form-input" type="password" name="_password" placeholder="Password" id="password" required>
+            </div>
+
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+            <button class="btn blue" type="submit">Login</button>
+        </form>
+    </div>
+</body>
+</html>
