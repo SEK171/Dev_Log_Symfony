@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-<!-- added this here to load only once, get an infinite loop in the logs table otherwise -->
+{# added this here to load only once, get an infinite loop in the logs table otherwise #}
 {% set isAdmin = is_granted('ROLE_ADMIN') %}
 
 {% block title %}Home - Log Manager{% endblock %}
@@ -167,10 +167,11 @@
         });
 
         $('#data').on('click', '.assign-btn', function() {
-            const logId = $(this).data('logid');
-            $('#assignForm input[name="log_id"]').val(logId);
-            $('#assignModal').css('display', 'flex');
-        });
+			const logId = $(this).data('logid');
+			// Using $= finds the input whether it's named "log_id" or "task[log_id]"
+			$('#assignForm input[name$="[log_id]"], #assignForm input[name="log_id"]').val(logId);
+			$('#assignModal').css('display', 'flex');
+		});
 
         $('.close').click(function() {
             $('.modal').css('display', 'none');
@@ -200,9 +201,18 @@
                         }
                     }
                 },
-                error: function() {
-                    alert('Error assigning task. Please try again.');
-                }
+                error: function(xhr) {
+					let errorMsg = 'Error assigning task';
+					if (xhr.responseJSON && xhr.responseJSON.errors) {
+						errorMsg += ':\n';
+						for (let field in xhr.responseJSON.errors) {
+							errorMsg += field + ': ' + xhr.responseJSON.errors[field] + '\n';
+						}
+					} else if (xhr.responseJSON && xhr.responseJSON.error) {
+						errorMsg += ': ' + xhr.responseJSON.error;
+					}
+					alert(errorMsg);
+				}
             });
         });
 
