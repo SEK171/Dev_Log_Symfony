@@ -5,3 +5,6 @@ Features role-based user authentication, interactive administrative dashboards, 
 The entire architecture is decoupled and containerized;
 to run the application locally,
 ensure Docker is installed and simply 'docker compose up' to spin up the required web server, PHP environment and database instances.
+
+test accounts: (username, password)
+(admin, admin), (user1, user), (user2, user)
